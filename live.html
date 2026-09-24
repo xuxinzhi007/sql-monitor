@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>调用 · 本地日志监控</title>
+<style>
+:root{font:14px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;color:#283347;background:#f6f8fb;--muted:#7b8799;--border:#e2e7ef;--blue:#3864d9}*{box-sizing:border-box}body{margin:0}[hidden]{display:none!important}a{color:var(--blue);text-decoration:none}button,input,select{font:inherit}button,input,select{border:1px solid var(--border);border-radius:6px;padding:8px 11px;background:white;color:#47556c}button{cursor:pointer}button:hover{border-color:#adc0f0;background:#f5f8ff}button:disabled{opacity:.45;cursor:default}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #99b5fa;outline-offset:3px}.primary{background:var(--blue);border-color:var(--blue);color:white}.primary:hover{background:#2e56bd;color:white}.nav,header{display:flex;align-items:center;gap:12px;padding:16px 28px;background:white;border-bottom:1px solid var(--border);flex-wrap:wrap}.nav>a[data-view]{font-weight:600;padding:8px 12px;color:#66758c}.nav>a[aria-current]{color:var(--blue);background:#edf2ff;border-radius:6px}.secondary{display:flex;gap:20px;margin-left:auto;font-size:12px}.secondary a{color:var(--muted)}h1{font-size:20px;margin:0}h2{font-size:16px;margin:0}h3{font-size:14px;margin:22px 0 10px}.grow{flex:1}.badge{display:inline-block;font-size:11px;border-radius:4px;padding:4px 7px;background:#eef2f8;color:#6f7f98}.badge.warn{background:#fff2db;color:#99641a}.badge.error{background:#fbecee;color:#b64153}.badge.ok{background:#eaf6ef;color:#367451}.muted,.notes{color:var(--muted);font-size:12px;line-height:1.9}.source-line{width:100%;font-size:12px;color:var(--muted);overflow-wrap:anywhere}.source-line code{color:#566780}.status-line{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:18px;font-size:12px;color:var(--muted)}main{max-width:1700px;margin:auto;padding:24px 28px 36px}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:20px 0}.stat,.panel,.privacy{background:white;border:1px solid var(--border);border-radius:9px}.stat{padding:17px 19px}.stat span,.stat small{font-size:11px;color:var(--muted)}.stat strong{font-size:27px;display:block;margin:8px 0;font-weight:620}.stat small{display:block;line-height:1.7}.privacy{padding:24px;line-height:1.9}.privacy h2{font-size:20px}.privacy p{max-width:1000px;color:#65718a}.warning{background:#fff8eb;border:1px solid #f1e0bd;border-radius:6px;color:#946a2b;padding:12px 15px;font-size:12px;line-height:1.9}.error-banner{background:#fff0f0;border:1px solid #efd4d9;color:#ae4856;border-radius:6px;padding:12px 15px;margin-bottom:16px;font-size:12px}.panel{overflow:hidden}.section-head{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:17px;border-bottom:1px solid var(--border)}.filters{display:flex;gap:9px;flex-wrap:wrap;padding:14px 17px;background:#fcfdff;align-items:center}.filters label{display:flex;gap:6px;align-items:center;font-size:11px;color:var(--muted)}.filters input,.filters select{font-size:12px;min-width:0}#search{flex:1;min-width:200px}#trace{width:260px;font-family:ui-monospace,monospace}.tablewrap{overflow:auto;max-height:65vh}table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;min-width:1000px}th{text-align:left;position:sticky;top:0;background:#f8fafc;color:#7d8b9f;font-size:11px;font-weight:500;padding:12px 15px;border-block:1px solid #ecf0f5;z-index:1}td{padding:14px 15px;border-bottom:1px solid #f0f2f6;vertical-align:top;overflow-wrap:anywhere;line-height:1.7}tbody tr:hover{background:#fafcff}th:first-child{width:145px}.message-cell{width:32%}.row-button{display:block;width:100%;text-align:left;border:0;padding:0;color:#34445e;background:transparent!important}.clip{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere}.time-note{color:#3d7a54}.sub{font-size:11px;color:var(--muted);margin-top:5px;overflow-wrap:anywhere}.mono{font:11px/1.8 ui-monospace,SFMono-Regular,monospace;overflow-wrap:anywhere}.empty{padding:55px 22px;text-align:center;color:#8090a6;line-height:2}.foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid var(--border);padding:13px 17px;font-size:12px;color:var(--muted)}.foot button{font-size:12px}.notes{font-size:11px;margin-top:16px}dialog{width:1000px;max-width:95vw;max-height:90vh;padding:0;border:1px solid #d9e0ec;border-radius:10px;color:#283347}dialog::backdrop{background:#18284065}.dialog-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:17px 22px;border-bottom:1px solid var(--border)}.dialog-body{padding:18px 22px;max-height:72vh;overflow:auto}.dialog-body p{line-height:1.9;overflow-wrap:anywhere}pre{font:12px/1.8 ui-monospace,SFMono-Regular,monospace;white-space:pre-wrap;overflow-wrap:anywhere;background:#f5f7fb;border:1px solid #e4e9f2;border-radius:7px;padding:15px}.sql-card{border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin:10px 0;background:#fff}.sql-card.slow{border-color:#f0d7a2;background:#fffaf1}.sql-card.error{border-color:#efd4d9;background:#fff7f8}.sql-kw{color:#3864d9;font-weight:650}.sql-card header{display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--muted);margin-bottom:8px}.sql-card pre{margin:0}.sql-card{border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin:10px 0;background:#fff}.sql-card.slow{border-color:#f0d7a2;background:#fffaf1}.sql-card header{display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--muted);margin-bottom:8px}.sql-card pre{margin:0}.event-line{padding:12px 0;border-bottom:1px solid #edf0f5}.event-line.selected{padding:12px;background:#edf2ff;border-radius:6px}.event-list{margin-top:12px}.detail-meta{white-space:pre-wrap}.dialog-status{padding:8px 22px;background:#f8fafc}.request-warning{margin:0 17px 14px}@media(max-width:850px){.nav,header{padding:14px}.nav{gap:4px}.nav>a[data-view]{padding:8px}.secondary{gap:14px}main{padding:18px 14px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stat{padding:14px}.filters #trace{width:100%}.dialog-head{padding:14px}.dialog-body{padding:16px}}
+</style>
+</head>
+<body>
+<nav class="nav" aria-label="工具导航">
+<a href="/requests" data-view="requests">调用</a><a href="/live" data-view="live">日志</a>
+<span class="secondary"><a href="/sql">SQL分析</a><a href="/logs">日志导入</a></span>
+</nav>
+<header><h1 id="title">调用</h1><span class="badge">本地 · 只读</span><span class="grow"></span><button id="pause" disabled>暂停刷新</button><button id="hide-content" hidden>隐藏日志内容</button><div class="source-line">输入来源：<code id="source">尚未读取 · 同意后连接本机采集器</code><span id="source-status"></span></div><div class="source-line" id="limits">截断 / 淘汰计数尚未读取</div></header>
+<main>
+<div class="status-line"><span id="connection" role="status" aria-live="polite">等待隐私确认 · 尚未请求接口</span><span class="grow"></span><span id="updated"></span></div>
+<div id="error" class="error-banner" role="alert" hidden></div>
+<section id="privacy" class="privacy" aria-labelledby="privacy-title"><span class="badge">先确认，再读取</span><h2 id="privacy-title">日志内容可能包含敏感信息</h2><p>实时日志、异常消息和请求详情均未经脱敏，可能含口令、令牌、个人信息及完整业务请求 / 响应。点击下方按钮后，浏览器才会请求 <code>/api/live?raw=1</code>，并每 2 秒刷新；原文仅在详情中显示，但消息本身也可能敏感。</p><p class="warning">仅在当前页面内存保留，不写入浏览器存储、不发送到第三方。请勿共享页面或复制敏感内容。「隐藏日志内容」将撤回同意、中止读取，并立即清除页面数据和详情；不会删除或停止后端采集。刷新或从页面缓存恢复后需重新同意。</p><button id="consent" class="primary">我已了解隐私风险，同意读取日志内容</button></section>
+<div id="workspace" hidden>
+<div class="stats"><div class="stat"><span>当前保留 · 异常出现次数</span><strong id="anomaly-count">—</strong><small>仅 WARN / ERROR / FATAL · 不含已淘汰事件</small></div><div class="stat"><span>当前保留 · 请求记录</span><strong id="request-count">—</strong><small id="request-note">按边界和关联证据，不推断调用树</small></div><div class="stat"><span>当前保留 / 累计观察</span><strong id="event-count">—</strong><small id="event-note">窗口数据与累计计数分开统计</small></div><div class="stat"><span>SQL · 累计观察</span><strong id="sql-count">—</strong><small>来自 /api/status 的 SQL 计数，不读取 SQL 原文</small></div></div>
+<section class="panel" aria-labelledby="list-title">
+<div class="section-head"><h2 id="list-title">异常分组</h2><span class="muted" id="scope"></span></div>
+<div class="filters"><input id="search" type="search" autocomplete="off" placeholder="搜索来源 / 消息" aria-label="搜索来源或消息"><label id="level-label">级别<select id="level" aria-label="日志级别"><option value="">全部级别</option><option>DEBUG</option><option>INFO</option><option>WARN</option><option>ERROR</option><option>FATAL</option><option>UNKNOWN</option></select></label><label id="kind-label">类型<select id="kind" aria-label="日志类型"><option value="">全部类型</option><option value="sql">SQL</option><option value="request">请求</option><option value="log">日志</option><option value="unparsed">未解析</option></select></label><input id="trace" autocomplete="off" spellcheck="false" placeholder="精确 trace ID（32位十六进制）" aria-label="精确 trace ID"><button id="reset-filters">清除筛选</button></div>
+<div id="request-warning" class="warning request-warning" hidden></div>
+<div class="tablewrap"><table aria-label="保留日志分析结果"><thead id="columns"></thead><tbody id="rows"></tbody></table><div id="empty" class="empty"></div></div>
+<div class="foot"><span id="result-count"></span><div><button id="previous">上一页</button> <span id="page-label"></span> <button id="next">下一页</button></div><span>每页最多 50 条</span></div>
+</section>
+<p class="notes" id="view-note"></p><p class="notes">所有列表仅覆盖后端当前保留窗口；累计观察、级别、截断、淘汰计数不能当作当前异常分组次数。未采集到日志不等于没有发生。缺失边界不代表请求卡住或仍在运行。</p>
+</div>
+</main>
+<dialog id="detail" aria-labelledby="detail-title"><div class="dialog-head"><h2 id="detail-title">日志详情</h2><span class="grow"></span><button id="detail-hide">隐藏日志内容</button><button id="close-detail" aria-label="关闭详情">关闭详情</button></div><div class="muted dialog-status" id="detail-status"></div><div class="dialog-body" id="detail-body"></div></dialog>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const PAGE_SIZE=50, TIMELINE_LIMIT=100;
+const TITLES={overview:'调用',requests:'调用',live:'日志'};
+const STATES={completed:'已完成',failed:'失败',missing_end:'缺少结束边界',missing_start:'缺少开始边界',unlinked:'未关联',ambiguous:'关联有歧义'};
+const KINDS={sql:'SQL',request:'请求',log:'日志',unparsed:'未解析'};
+const emptySnapshot=()=>({stats:{},events:[],anomalies:[],requests:[]});
+let snapshot=emptySnapshot(),sourceInfo=null,consented=false,paused=false,leaving=false;
+let view=pathView(),page=0,generation=0,controller=null,busy=false,timer=null,lastUpdated='',liveError=false,stateError=false;
+let detailSnapshot=null;
+const str=v=>String(v??'');
+const accessEnd=/^\[([^\[\]\r\n]+)\] ([0-9][^ \t\r\n]*) resp=([\s\S]*)$/;
+const accessStart=/^\[([^\[\]\r\n]+)\] req=([\s\S]*)$/;
+function parseJSON(text){const t=String(text??'').trim();if(!t||(t[0]!=='{'&&t[0]!=='['))return null;try{return JSON.parse(t);}catch{return null;}}
+function clockValue(key,value){
+ const name=String(key||'');
+ if(/date$/i.test(name)&&/^(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])$/.test(String(value))){const s=String(value);return s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8);}
+ if(!/(?:At|Time|Timestamp)$/i.test(name)&&!/^(?:ts|timestamp)$/i.test(name))return '';
+ const n=typeof value==='number'?value:typeof value==='string'&&/^\d{10,13}$/.test(value)?Number(value):NaN;
+ if(!Number.isFinite(n))return '';
+ const ms=n>=1e12?n:n>=1e9?n*1000:0;
+ if(!ms)return '';
+ const d=new Date(ms);if(Number.isNaN(d.getTime()))return '';
+ return d.toLocaleString('zh-CN',{hour12:false,timeZone:'Asia/Shanghai'});
+}
+function annotate(value,key){
+ if(Array.isArray(value))return value.map(v=>annotate(v));
+ if(value&&typeof value==='object'){const out={};for(const [k,v] of Object.entries(value))out[k]=annotate(v,k);return out;}
+ const note=clockValue(key,value);return note?String(value)+'  '+note:value;
+}
+function prettyJSON(value){return JSON.stringify(annotate(value),null,2);}
+function payloadText(body){
+ if(parseJSON(body))return {body,err:''};
+ for(const marker of [' [err=',' err=']){
+  const i=body.lastIndexOf(marker);
+  if(i>0&&parseJSON(body.slice(0,i))){let err=body.slice(i+marker.length);if(marker===' [err=')err=err.replace(/\]$/,'');return {body:body.slice(0,i),err};}
+ }
+ return {body,err:''};
+}
+function accessParts(message){
+ const end=accessEnd.exec(message);
+ if(end){const p=payloadText(end[3]);return {headline:'['+end[1]+'] '+end[2]+(p.err?' · err '+p.err:''),label:'resp',body:p.body};}
+ const start=accessStart.exec(message);if(start)return {headline:'['+start[1]+'] req',label:'req',body:start[2]};
+ return null;
+}
+function logSummary(text){
+ const object=parseJSON(text);
+ const message=object&&typeof object==='object'&&!Array.isArray(object)?String(object.msg??object.message??''):String(text??'');
+ const access=accessParts(message);
+ const bits=[];
+ if(object&&typeof object==='object'&&!Array.isArray(object)){
+  if(object.level)bits.push(String(object.level));
+  const uid=object.uid??object.user_id,tenant=object.tenant_id??object.tenantId;
+  if(uid!==undefined&&uid!=='')bits.push('uid '+uid);
+  if(tenant!==undefined&&tenant!=='')bits.push('tenant '+tenant);
+ }
+ if(access)bits.push(access.headline);
+ else if(message)bits.push(message.length>180?message.slice(0,180)+'…':message);
+ return bits.join(' · ');
+}
+function appendPayload(access){
+ const payload=parseJSON(access.body);
+ $('detail-body').append(node('h3',access.label+(payload?' · JSON':' · 原文')));
+ $('detail-body').append(node('pre',payload?prettyJSON(payload):access.body||'（空）'));
+ if(!payload&&access.body.trim())appendNote('这段内容不是完整 JSON，保留原文。可能已被截断。',true);
+}
+function appendFormatted(title,text){
+ $('detail-body').append(node('h3',title));
+ const object=parseJSON(text);
+ if(object&&typeof object==='object'&&!Array.isArray(object)){
+  const message=String(object.msg??object.message??'');
+  const access=accessParts(message);
+  const copy={...object};
+  if(access){delete copy.msg;delete copy.message;copy.message=access.headline;}
+  $('detail-body').append(node('pre',prettyJSON(copy)));
+  if(access)appendPayload(access);
+  return;
+ }
+ const access=accessParts(text);
+ if(access){$('detail-body').append(node('p',access.headline));appendPayload(access);return;}
+ if(Array.isArray(object))$('detail-body').append(node('pre',prettyJSON(object)));
+ else $('detail-body').append(node('pre',text||'（空）'));
+}
+const count=v=>typeof v==='number'&&Number.isFinite(v)?v.toLocaleString('zh-CN'):'—';
+const duration=v=>typeof v==='number'&&Number.isFinite(v)?v.toLocaleString('zh-CN',{maximumFractionDigits:3})+' ms':'未提供';
+const risky=level=>['WARN','ERROR','FATAL'].includes(level);
+const eventTime=e=>str(e.time||e.received_at||'时间未提供');
+const key=id=>str(id);
+function node(tag,text,className){const el=document.createElement(tag);if(text!==undefined)el.textContent=str(text);if(className)el.className=className;return el;}
+function button(text,action,className){const b=node('button',text,className);b.type='button';b.onclick=action;return b;}
+function pathView(){return location.pathname==='/live'?'live':'requests';}
+function badge(text,kind){return node('span',text,'badge '+(kind==='ERROR'||kind==='FATAL'||kind==='failed'?'error':kind==='WARN'||['unlinked','ambiguous','missing_end','missing_start'].includes(kind)?'warn':kind==='completed'?'ok':''));}
+function invalidate(){generation++;clearTimeout(timer);timer=null;controller?.abort();}
+function closeDetail(){if($('detail').open)$('detail').close();detailSnapshot=null;$('detail-body').replaceChildren();$('detail-title').textContent='日志详情';$('detail-status').textContent='';}
+function clearFilters(){for(const id of ['search','level','kind','trace'])$(id).value='';page=0;}
+function revoke(){
+ consented=false;paused=false;invalidate();closeDetail();snapshot=emptySnapshot();sourceInfo=null;page=0;lastUpdated='';liveError=false;stateError=false;clearFilters();
+ $('rows').replaceChildren();$('columns').replaceChildren();
+ for(const id of ['source-status','updated','error','request-warning','result-count','page-label','request-note','event-note'])$(id).textContent='';
+ for(const id of ['anomaly-count','request-count','event-count','sql-count'])$(id).textContent='—';
+ $('source').textContent='尚未读取 · 同意后连接本机采集器';$('limits').textContent='截断 / 淘汰计数尚未读取';$('error').hidden=true;$('workspace').hidden=true;$('privacy').hidden=false;$('hide-content').hidden=true;$('pause').disabled=true;$('pause').textContent='暂停刷新';$('connection').textContent='日志内容已隐藏 · 需重新同意后读取';
+}
+function updateView(){
+ document.title=TITLES[view]+' · 本地日志监控';$('title').textContent=TITLES[view];
+ document.querySelectorAll('[data-view]').forEach(a=>{if(a.dataset.view===view)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
+ $('list-title').textContent=view==='live'?'日志':'调用';
+ $('scope').textContent=view==='live'?'没有请求身份的行留在这里':'一次调用一行：谁触发、中间的 SQL、结果';
+ $('level-label').hidden=view!=='live';$('kind-label').hidden=view!=='live';
+ $('search').placeholder=view==='requests'?'搜索接口操作名':'搜索来源 / 消息';$('search').setAttribute('aria-label',view==='requests'?'搜索接口操作名':'搜索来源或消息');
+ $('view-note').textContent=view==='live'?'这里是没有请求身份的日志。有 trace / span 的行会打开对应的调用周期，而不是再展开展文。':'点开一次请求只看这次接口做的 SQL。有 trace 按 span 归属；没有 trace 时只保留代码路径对上该服务的 SQL。';
+}
+function navigate(){invalidate();closeDetail();view=pathView();clearFilters();updateView();if(consented){render();poll();}}
+function renderStatus(){
+ $('connection').textContent=!consented?'等待隐私确认':paused?'已暂停刷新 · 后端继续采集':liveError?'读取失败 · 上次快照已过期':busy?'正在读取本机采集器…':'每 2 秒刷新 · 仅当前保留窗口';
+ $('updated').textContent=lastUpdated?'最近成功读取 '+lastUpdated:'';
+ const errors=[];if(liveError)errors.push('实时接口读取失败，保留上次成功快照（数据已过期）；恢复刷新后将重试。');if(stateError)errors.push('来源 / SQL 状态读取失败，相关计数可能过期。');
+ $('error').textContent=errors.join(' ');$('error').hidden=!errors.length;
+ if($('detail').open)$('detail-status').textContent='详情为打开时快照，不随轮询更新。'+(liveError?' 实时接口失败，数据已过期。':'')+(paused?' 已暂停刷新。':'');
+}
+function renderStats(){
+ const s=snapshot.stats;
+ $('anomaly-count').textContent=count(snapshot.events.filter(e=>risky(e.level)).length);
+ $('request-count').textContent=count(snapshot.requests.length);
+ const uncertain=snapshot.requests.filter(r=>r.state==='unlinked'||r.state==='ambiguous').length;
+ $('request-note').textContent='未关联 / 有歧义 '+count(uncertain)+' 条 · 不代表接口请求总数';
+ $('event-count').textContent=count(s.retained)+' / '+count(s.observed);
+ $('event-note').textContent='累计未解析 '+count(s.unparsed)+' · 累计有 trace '+count(s.with_trace);
+ $('sql-count').textContent=count(sourceInfo?.sql_observed);
+ $('source').textContent=sourceInfo?(sourceInfo.source_mode==='stdin'?'stdin':sourceInfo.path||'来源未提供'):'来源状态尚未读取';
+ $('source-status').textContent=sourceInfo?' · '+(sourceInfo.error?'输入读取异常，请检查采集器':sourceInfo.input_state==='eof'?'输入 EOF · 采集结束':sourceInfo.source_mode==='stdin'?'读取输入流':'跟随文件'):'';
+ const levels=['DEBUG','INFO','WARN','ERROR','FATAL','UNKNOWN'].map(l=>l+' '+count(s.levels?.[l])).join(' / ');
+ $('limits').textContent='累计截断 '+count(s.truncated)+' · 累计淘汰 '+count(s.evicted)+' · 保留容量 '+count(s.capacity)+' 条 / 字节上限 '+count(s.byte_limit)+' B · 累计级别：'+levels;
+}
+function matchingItems(){
+ const query=$('search').value.trim().toLowerCase(),trace=$('trace').value.trim().toLowerCase();
+ const matches=text=>!query||str(text).toLowerCase().includes(query);
+ if(view==='requests')return snapshot.requests.filter(r=>matches(r.operation)&&(!trace||r.trace_id===trace));
+ if(view==='overview'){
+  const traced=new Set(snapshot.events.filter(e=>e.trace_id===trace).map(e=>key(e.id)));
+  return snapshot.anomalies.filter(a=>risky(a.level)&&matches(str(a.source)+' '+str(a.message))&&(!trace||(a.event_ids||[]).some(id=>traced.has(key(id)))));
+ }
+ return snapshot.events.filter(e=>(!$('level').value||e.level===$('level').value)&&(!$('kind').value||e.kind===$('kind').value)&&matches(str(e.source)+' '+str(e.message))&&(!trace||e.trace_id===trace)).slice().reverse();
+}
+function cell(row,text,className){const td=node('td',text,className);row.append(td);return td;}
+function render(){
+ if(!consented)return;
+ renderStats();renderStatus();
+ const headers=view==='overview'?['级别','精确消息 / 来源','保留次数','首次 / 最近','详情']:view==='requests'?['接口','耗时','SQL','状态','详情']:['级别 / 类型','消息 / 来源','日志时间','精确 trace / span','详情'];
+ const hr=node('tr');headers.forEach((h,i)=>hr.append(node('th',h,i===1?'message-cell':'')));$('columns').replaceChildren(hr);
+ const items=matchingItems(),pages=Math.max(1,Math.ceil(items.length/PAGE_SIZE));page=Math.min(page,pages-1);$('rows').replaceChildren();
+ for(const item of items.slice(page*PAGE_SIZE,(page+1)*PAGE_SIZE)){
+  const tr=node('tr');
+  if(view==='overview'){
+   cell(tr).append(badge(item.level,item.level));const message=cell(tr);message.append(button(logSummary(item.message)||'（空消息）',()=>openAnomaly(item.id),'row-button clip'),node('div',item.source||'来源未提供','sub'));
+   cell(tr,count(item.count));const times=cell(tr,item.first_time||'时间未提供');times.append(node('div',item.last_time||'时间未提供','sub'));cell(tr).append(button('查看出现记录',()=>openAnomaly(item.id)));
+  }else if(view==='requests'){
+   const op=cell(tr);op.append(button(item.operation||'操作名未提供',()=>openRequest(item.id),'row-button clip'),node('div',requestBlurb(item),'sub'));
+   cell(tr,duration(item.duration_ms));cell(tr,count(item.sql_count));
+   cell(tr).append(badge(STATES[item.state]||'未知状态',item.state));
+   cell(tr).append(button('查看这次调用',()=>openRequest(item.id)));
+  }else{
+   const level=cell(tr);level.append(badge(item.level||'UNKNOWN',item.level),node('div',KINDS[item.kind]||'未知类型','sub'));
+   const message=cell(tr);message.append(button(logSummary(item.message)||'（空消息）',()=>openEvent(item.id),'row-button clip'),node('div',(item.source||'来源未提供')+(item.truncated?' · 已截断':''),'sub'));
+   cell(tr,eventTime(item));const ids=cell(tr,undefined,'mono');ids.append(node('div','trace: '+(item.trace_id||'未提供')),node('div','span: '+(item.span_id||'未提供')));cell(tr).append(button('查看原文 / 上下文',()=>openEvent(item.id)));
+  }
+  $('rows').append(tr);
+ }
+ const uncertain=snapshot.requests.filter(r=>['unlinked','ambiguous'].includes(r.state)).length;
+ $('request-warning').hidden=view!=='requests';$('request-warning').textContent='点开一条接口，先看这次调用的 SQL，再看开始到结束之间的步骤。SQL 只统计和这次 span 对上的查询。同 trace 的其他 SQL 单独列出，不能当成这次调用。当前 '+count(uncertain)+' 条缺少可靠关联。';
+ $('empty').hidden=items.length>0;$('empty').textContent=!lastUpdated?'尚未取得日志快照。请等待首次读取；若接口失败，可恢复刷新重试。':!snapshot.events.length?'当前保留窗口没有日志。请确认输入源和日志输出；输入 EOF 后不会自动新增。':view==='overview'?'没有匹配的 WARN / ERROR / FATAL 分组。DEBUG 重复不会列为风险；可清除筛选或查看实时日志。':view==='requests'?'没有匹配的请求记录。普通日志不一定含请求边界；可清除筛选或到实时日志检查原始证据。':'没有匹配日志。请检查级别、类型、来源 / 消息或精确 trace，或清除筛选。';
+ $('result-count').textContent=count(items.length)+(view==='overview'?' 组 · 次数为全组保留事件，trace 筛选只选择组':' 条 · 当前保留窗口');$('page-label').textContent=(page+1)+' / '+pages;$('previous').disabled=page===0;$('next').disabled=page>=pages-1;
+}
+function beginDetail(title,useCurrent=true){
+ if(!consented)return false;
+ if(useCurrent||!detailSnapshot)detailSnapshot=snapshot;
+ $('detail-title').textContent=title;$('detail-body').replaceChildren();if(!$('detail').open)$('detail').showModal();renderStatus();return true;
+}
+function appendNote(text,warning=false){$('detail-body').append(node('p',text,warning?'warning':'muted'));}
+// Each detail list owns only its visible page; no unbounded DOM or raw markup.
+function eventList(title,ids,{limit=Infinity,selected='',allowOpen=true}={}){
+ const data=detailSnapshot,byId=new Map(data.events.map(e=>[key(e.id),e]));
+ const unique=[...new Set((ids||[]).map(key))],present=unique.map(id=>byId.get(id)).filter(Boolean),missing=unique.length-present.length;
+ const items=present.slice(0,limit);let listPage=0;
+ const section=node('section'),list=node('div',undefined,'event-list'),foot=node('div',undefined,'foot'),label=node('span');
+ section.append(node('h3',title));section.append(node('p','可用 '+count(present.length)+' 条 · 不在详情快照 '+count(missing)+' 条'+(present.length>limit?' · 超过上限，省略 '+count(present.length-limit)+' 条':'')+' · 每页最多 50 条','muted'));
+ const prev=button('上一页',()=>{listPage--;draw();}),next=button('下一页',()=>{listPage++;draw();});prev.setAttribute('aria-label',title+'上一页');next.setAttribute('aria-label',title+'下一页');foot.append(prev,label,next);section.append(list,foot);$('detail-body').append(section);
+ function draw(){
+  list.replaceChildren();const pages=Math.max(1,Math.ceil(items.length/PAGE_SIZE));
+  for(const e of items.slice(listPage*PAGE_SIZE,(listPage+1)*PAGE_SIZE)){
+   const row=node('div',undefined,'event-line'+(key(e.id)===key(selected)?' selected':''));
+   row.append(node('div','#'+str(e.id)+' · '+eventTime(e)+' · '+str(e.level)+' · '+(KINDS[e.kind]||'未知类型')+(e.truncated?' · 已截断':''),'mono'));
+   row.append(allowOpen?button(logSummary(e.message)||'（空消息）',()=>openEvent(e.id,false),'row-button clip'):node('div',logSummary(e.message)||'（空消息）','clip'));
+   row.append(node('div',(e.source||'来源未提供')+' · trace: '+(e.trace_id||'未提供')+' · span: '+(e.span_id||'未提供'),'sub'));
+   if(allowOpen)row.append(button('查看事件 #'+str(e.id)+' 原文 / 上下文',()=>openEvent(e.id,false)));
+   list.append(row);
+  }
+  if(!items.length)list.append(node('p','没有可用事件；引用可能已淘汰或不在当前保留窗口。','muted'));
+  label.textContent=(listPage+1)+' / '+pages;prev.disabled=listPage===0;next.disabled=listPage>=pages-1;
+ }
+ draw();
+}
+function openAnomaly(id){
+ const a=snapshot.anomalies.find(a=>key(a.id)===key(id));if(!a||!beginDetail('异常出现记录'))return;
+ $('detail-body').append(badge(a.level,a.level));appendFormatted('消息',a.message||'');
+ appendNote('来源：'+(a.source||'未提供')+' · 保留次数 '+count(a.count)+' · 首次 '+str(a.first_time)+' · 最近 '+str(a.last_time));
+ appendNote('按级别、来源与精确消息分组，仅来自当前保留事件；不是启动以来的累计异常。点击一次出现，查看物理相邻日志。');eventList('出现记录',a.event_ids);
+}
+function eventsByIds(ids){
+ const byId=new Map((detailSnapshot||snapshot).events.map(e=>[key(e.id),e]));
+ return (ids||[]).map(id=>byId.get(key(id))).filter(Boolean);
+}
+const SLOW_MS=200;
+function sqlInfo(e){
+ const raw=parseJSON(e.raw);
+ const sql=raw&&typeof raw.sql==='string'?raw.sql:'';
+ if(e.kind!=='sql'&&!sql)return null;
+ const ms=typeof e.duration_ms==='number'?e.duration_ms:null;
+ const marked=e.message==='Slow SQL'||(raw&&raw.msg==='Slow SQL');
+ const failed=e.message==='SQL Error'||(raw&&raw.msg==='SQL Error')||(raw&&typeof raw.error==='string'&&raw.error!=='');
+ return {sql:sql||e.message||'SQL',rows:raw&&raw.rows,elapsed:raw&&raw.elapsed,duration:ms,source:e.source||(raw&&raw.source)||'',slow:marked||(ms!=null&&ms>=SLOW_MS),error:failed?((raw&&raw.error)||''):''};
+}
+function requestSQL(r){
+ const byId=new Map(snapshot.events.map(e=>[key(e.id),e]));
+ return (r.event_ids||[]).map(id=>byId.get(key(id))).filter(Boolean).map(sqlInfo).filter(Boolean);
+}
+function requestBlurb(r){
+ const queries=requestSQL(r);
+ const slow=queries.filter(q=>q.slow).length;
+ const sqlText=queries.length?(queries.length+' 条 SQL'+(slow?' · 慢 '+slow:'')):(!r.trace_id?'没有对上本服务代码的 SQL':'这次 span 上没有 SQL');
+ return sqlText+' · '+(STATES[r.state]||'未知状态');
+}
+function sqlMarked(pre,sql){
+ const re=/\b(SELECT|FROM|WHERE|LEFT|RIGHT|INNER|OUTER|JOIN|ON|AND|OR|GROUP|BY|ORDER|LIMIT|OFFSET|COUNT|DISTINCT|AS|IN|NOT|NULL|UPDATE|SET|INSERT|INTO|DELETE|HAVING|EXISTS|LIKE|BETWEEN|UNION|ASC|DESC)\b/gi;
+ let last=0,m;
+ const text=String(sql||'');
+ while((m=re.exec(text))){
+  if(m.index>last)pre.append(text.slice(last,m.index));
+  pre.append(node('b',m[0],'sql-kw'));
+  last=m.index+m[0].length;
+ }
+ if(last<text.length)pre.append(text.slice(last));
+}
+function sqlCards(title,events,empty){
+ $('detail-body').append(node('h3',title));
+ const queries=events.map(e=>({e,info:sqlInfo(e)})).filter(x=>x.info);
+ if(!queries.length){appendNote(empty);return;}
+ for(const {e,info} of queries){
+  const card=node('article',undefined,'sql-card'+(info.error?' error':info.slow?' slow':''));
+  const head=node('header');
+  head.append(badge(info.error?'SQL 错误':info.slow?'慢查询':'正常',info.error?'ERROR':info.slow?'WARN':'ok'));
+  head.append(node('span',info.elapsed||duration(info.duration),info.slow?'badge warn':''));
+  if(info.rows!==undefined&&info.rows!=='')head.append(node('span',info.rows+' 行'));
+  head.append(node('span',info.source||'位置未提供'));
+  card.append(head);
+  const pre=node('pre');sqlMarked(pre,info.sql);card.append(pre);
+  if(info.error)card.append(node('p',info.error,'warning'));
+  $('detail-body').append(card);
+ }
+}
+function actorLine(events){
+ for(const e of events){
+  const raw=parseJSON(e.raw)||{};
+  const uid=raw.uid??raw.user_id,tenant=raw.tenant_id??raw.tenantId;
+  const service=e.service||raw['service.name']||'';
+  if(uid===undefined&&tenant===undefined&&!service)continue;
+  return [uid!==undefined&&uid!==''?'uid '+uid:'',tenant!==undefined&&tenant!==''?'tenant '+tenant:'',service].filter(Boolean).join(' · ');
+ }
+ return '';
+}
+function requestFor(eventId,data){
+ const id=key(eventId);
+ return (data.requests||[]).find(r=>(r.event_ids||[]).some(x=>key(x)===id)||key(r.start_id)===id||key(r.end_id)===id);
+}
+function openRequest(id){
+ const r=snapshot.requests.find(r=>key(r.id)===key(id));if(!r||!beginDetail(r.operation||'一次调用'))return;
+ const linked=eventsByIds(r.event_ids);
+ const who=actorLine(linked);
+ $('detail-body').append(node('h3','谁触发'));
+ $('detail-body').append(node('p',who||'日志里没有 uid / tenant'));
+ $('detail-body').append(node('h3','这次调用'));
+ const slowCall=typeof r.duration_ms==='number'&&r.duration_ms>=SLOW_MS;
+ $('detail-body').append(badge(STATES[r.state]||'未知状态',r.state));
+ if(slowCall)$('detail-body').append(document.createTextNode(' '),badge('慢调用','WARN'));
+ $('detail-body').append(node('p',(r.operation||'操作名未提供')+' · '+duration(r.duration_ms)));
+ if(['unlinked','ambiguous'].includes(r.state))appendNote('证据不够，不能确定下面的 SQL 属于这一次调用。',true);
+ if(['missing_end','missing_start'].includes(r.state))appendNote('缺少开始或结束记录，不能判断这次调用是否已经返回。',true);
+ sqlCards('这次请求做的 SQL',linked,r.trace_id?'这次 span 上没有 SQL。':'没有来自该服务代码路径的 SQL。后台任务的 SQL 不会列在这里。');
+ appendNote('慢 SQL 与 SQL 分析相同：日志标记 Slow SQL，或耗时 ≥ '+SLOW_MS+'ms。SQL Error 标为错误。');
+ const sameTrace=eventsByIds(r.related_ids).filter(e=>sqlInfo(e));
+ if(r.trace_id&&sameTrace.length)sqlCards('同 trace 的其他 SQL，不算这次调用',sameTrace,'');
+}
+function openEvent(id,useCurrent=true){
+ const data=useCurrent?snapshot:detailSnapshot;if(!consented||!data)return;
+ const e=data.events.find(e=>key(e.id)===key(id));if(!e)return;
+ const owner=requestFor(id,data);
+ if(owner){openRequest(owner.id);return;}
+ if(!beginDetail('不是一次接口调用',useCurrent))return;
+ $('detail-body').append(badge(e.level||'UNKNOWN',e.level));
+ $('detail-body').append(node('p',(e.message||'（空消息）')));
+ appendNote((e.service||'服务未提供')+' · '+(e.source||'来源未提供')+' · '+eventTime(e));
+ appendNote('这条日志没有请求的 trace / span，不能放进一次调用。后台任务、锁和启动日志都在这里。');
+}
+async function readJSON(path,signal){
+ const response=await fetch(path,{signal,cache:'no-store',redirect:'error'});
+ if(!response.ok)throw Error('HTTP '+response.status);
+ return response.json();
+}
+// One fetch at a time, including source metadata. Invalidated requests keep the
+// serialization lock until settled; generation checks reject every stale result.
+async function poll(){
+ if(!consented||paused||leaving||busy)return;
+ clearTimeout(timer);timer=null;busy=true;const g=generation;const ctrl=new AbortController();controller=ctrl;renderStatus();
+ const valid=()=>g===generation&&consented&&!paused&&!leaving;
+ try{
+  try{
+   const incoming=await readJSON('/api/live?raw=1',ctrl.signal);if(!valid())return;
+   if(!incoming||!incoming.stats||!Array.isArray(incoming.events)||!Array.isArray(incoming.anomalies)||!Array.isArray(incoming.requests))throw Error('Invalid snapshot');
+   snapshot={stats:incoming.stats,events:incoming.events,anomalies:incoming.anomalies,requests:incoming.requests};liveError=false;lastUpdated=new Date().toLocaleTimeString('zh-CN',{hour12:false});render();
+  }catch(e){if(!valid())return;liveError=true;renderStatus();}
+  if(!valid())return;
+  try{
+   const metadata=await readJSON('/api/status',ctrl.signal);if(!valid())return;
+   const s=metadata;if(!s||typeof s!=='object')throw Error('Invalid status');
+   sourceInfo={source_mode:s.source_mode,path:s.path,input_state:s.input_state,error:!!s.error,sql_observed:s.sql_observed};stateError=false;renderStats();
+  }catch(e){if(!valid())return;stateError=true;}
+ }finally{
+  busy=false;if(controller===ctrl)controller=null;
+  if(consented&&!leaving){renderStatus();if(!paused)timer=setTimeout(poll,g===generation?2000:0);}
+ }
+}
+$('consent').onclick=()=>{if(consented)return;consented=true;paused=false;$('privacy').hidden=true;$('workspace').hidden=false;$('hide-content').hidden=false;$('pause').disabled=false;render();poll();};
+$('hide-content').onclick=$('detail-hide').onclick=()=>{revoke();$('consent').focus();};
+$('close-detail').onclick=closeDetail;
+$('detail').addEventListener('cancel',e=>{e.preventDefault();closeDetail();});
+$('pause').onclick=()=>{if(!consented)return;paused=!paused;invalidate();$('pause').textContent=paused?'恢复刷新':'暂停刷新';renderStatus();if(!paused)poll();};
+for(const id of ['search','trace','level','kind'])$(id).addEventListener(id==='search'||id==='trace'?'input':'change',()=>{page=0;render();});
+$('reset-filters').onclick=()=>{clearFilters();render();};$('previous').onclick=()=>{page=Math.max(0,page-1);render();};$('next').onclick=()=>{page++;render();};
+document.querySelectorAll('[data-view]').forEach(a=>a.addEventListener('click',e=>{if(e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;e.preventDefault();if(location.pathname!==a.getAttribute('href'))history.pushState(null,'',a.getAttribute('href'));navigate();}));
+document.querySelectorAll('.secondary a').forEach(a=>a.addEventListener('click',e=>{if(e.button===0&&!e.metaKey&&!e.ctrlKey&&!e.shiftKey&&!e.altKey){leaving=true;revoke();}}));
+window.addEventListener('popstate',navigate);
+window.addEventListener('pagehide',()=>{leaving=true;revoke();});
+window.addEventListener('pageshow',e=>{if(e.persisted){leaving=false;revoke();view=pathView();updateView();}});
+updateView();
+</script>
+</body>
+</html>

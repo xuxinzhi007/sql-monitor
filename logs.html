@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>日志排查 · 本地开发</title>
+<style>
+:root{font:14px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;color:#283347;background:#f6f8fb;--blue:#3864d9;--border:#e2e7ef;--muted:#7b8799}*{box-sizing:border-box}body{margin:0}nav{display:flex;gap:24px;padding:14px 28px;background:white;border-bottom:1px solid var(--border)}a{color:var(--muted);text-decoration:none}a[aria-current]{color:var(--blue);font-weight:600}header{display:flex;align-items:center;gap:14px;background:white;padding:20px 28px;border-bottom:1px solid var(--border)}h1{font-size:19px;margin:0}h2{font-size:15px;margin:0}.badge{font-size:11px;padding:5px 8px;border-radius:5px;color:#57705e;background:#eef6f0}.grow{flex:1}main{max-width:1700px;margin:auto;padding:24px 28px}.muted{color:var(--muted);font-size:12px;line-height:1.9}.source{margin-bottom:18px;overflow-wrap:anywhere}.card{background:white;border:1px solid var(--border);border-radius:10px;overflow:hidden}.privacy{max-width:760px;margin:55px auto;padding:32px}.privacy h2{font-size:21px;margin:10px 0 20px}.privacy p{line-height:1.95;color:#65718a}.privacy .warning{padding:15px;background:#fff8eb;border-radius:7px;color:#95713b;font-size:13px}.privacy label{display:flex;gap:9px;margin:24px 0;line-height:1.8;align-items:flex-start}button,input,select{font:inherit}button{border:1px solid var(--border);background:white;color:#47556c;border-radius:6px;padding:8px 13px;cursor:pointer}button:hover{background:#f4f7ff;border-color:#b4c5ed}button.primary{background:var(--blue);border-color:var(--blue);color:white}button:disabled{opacity:.45;cursor:default}input[type=search]{padding:10px 12px;border:1px solid var(--border);border-radius:6px;flex:1;min-width:190px}button:focus-visible,input:focus-visible{outline:2px solid #99b5fa;outline-offset:3px}.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:17px;border-bottom:1px solid var(--border)}.toolbar label{font-size:12px;color:#65718a}.statusbar{padding:13px 18px;background:#fcfdff;border-bottom:1px solid var(--border);display:flex;gap:15px;align-items:center;flex-wrap:wrap}progress{width:170px;height:5px;accent-color:var(--blue)}.workspace{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);min-height:440px}.results{border-right:1px solid var(--border)}.sectionhead{padding:15px 18px;display:flex;gap:12px;align-items:center;border-bottom:1px solid #edf0f5}.sectionhead span{font-size:11px;color:var(--muted)}#hits{height:56vh;min-height:310px;overflow:auto}.hit{display:block;width:100%;border:0;border-radius:0;text-align:left;padding:13px 18px;border-bottom:1px solid #edf0f5}.hit:hover{background:#f8faff}.hit.selected{background:#edf2ff;box-shadow:inset 3px 0 var(--blue)}.offset{font:10px ui-monospace,SFMono-Regular,monospace;color:#8391a6;margin-bottom:6px}.hit code{font:12px/1.8 ui-monospace,SFMono-Regular,monospace;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;white-space:pre-wrap}.empty{padding:70px 25px;text-align:center;color:var(--muted);font-size:13px;line-height:2}#context{height:56vh;min-height:310px;overflow:auto;background:#fcfdff}.contextline{padding:8px 17px;border-bottom:1px solid #f0f2f6}.contextline.selected{background:#edf2ff;border-left:3px solid var(--blue)}pre{margin:0;font:12px/1.85 ui-monospace,SFMono-Regular,monospace;white-space:pre-wrap;overflow-wrap:anywhere}.foot{display:flex;align-items:center;gap:10px;padding:13px 18px;border-top:1px solid var(--border);flex-wrap:wrap;font-size:12px;color:var(--muted)}.notes{font-size:11px;line-height:1.95;color:#8793a6;margin-top:17px}#error{background:#fff0f0;color:#ae4856;border:1px solid #efd4d9;border-radius:7px;padding:12px 16px;margin-bottom:16px;line-height:1.8}#revoke{font-size:12px}[hidden]{display:none!important}@media(max-width:850px){header,nav{padding:15px}main{padding:18px 14px}.workspace{grid-template-columns:1fr}.results{border-right:0;border-bottom:1px solid var(--border)}#hits,#context{height:40vh}.privacy{margin:20px auto;padding:22px}.toolbar{gap:8px}}
+</style>
+</head>
+<body>
+<nav aria-label="工具导航" style="flex-wrap:wrap"><a href="/requests" style="font-weight:600">调用</a><a href="/live" style="font-weight:600">日志</a><a href="/sql" style="margin-left:auto">SQL分析</a><a href="/logs" aria-current="page">日志导入</a></nav>
+<header><h1>日志排查</h1><span class="badge">独立导入 · 本地快照</span><span class="grow"></span><button id="replace" hidden>导入另一个文件</button><button id="revoke" hidden>移除副本并隐藏原文</button></header>
+<main>
+<div class="source muted">导入来源：<span id="source">尚未导入 · 与 SQL 监控来源完全独立</span></div>
+<div id="error" role="alert" hidden></div>
+<input type="file" id="file" hidden>
+<section id="privacy" class="card privacy">
+<span class="badge">先了解原文隐私</span><h2>导入一份日志，找到前后发生的事</h2>
+<p>任意后端的文本、JSON、混合格式日志均可，不限制扩展名。导入完成后浏览末尾，或从文件开头分块搜索。无需配置 --log，SQL 使用 stdin 或文件缺失也不影响这里。</p>
+<p class="warning">日志原文未经脱敏，可能含口令、令牌、个人信息和业务参数。<strong>选择或拖入文件即确认上传并显示原文。</strong>浏览器分块发送到本机服务的临时副本，不外发、不修改或删除您的原文件。请勿共享页面或复制敏感内容。</p>
+<div id="drop" style="border:2px dashed #c6d2e7;border-radius:8px;padding:28px;text-align:center;margin-top:22px"><p>拖入一个日志文件，或</p><button class="primary" id="enter">确认并选择文件</button></div>
+<p class="muted">每页一次导入一个文件；单文件最多 2 GiB，服务最多 4 个副本、总计 4 GiB（含未完成上传）。每块 1 MiB，不整文件载入浏览器内存。30 分钟无访问后过期，清理每分钟执行；移除、取消或正常退出服务会清理副本。关闭页面尽力清理，异常退出可能遗留临时文件。</p>
+</section>
+<section id="upload" class="card" hidden style="padding:24px;margin-bottom:20px"><h2>正在创建本机临时副本</h2><p id="uploadStatus" role="status" aria-live="polite"></p><progress id="uploadProgress" max="100" value="0" aria-label="上传进度"></progress> <button id="cancelUpload">取消上传并移除副本</button></section>
+<section id="explorer" class="card" hidden>
+<form id="searchForm" class="toolbar"><input type="search" id="keyword" placeholder="在整个文件中查找关键词（区分大小写）" aria-label="日志关键词" maxlength="1024"><button class="primary" id="searchButton">搜索整个文件</button><button type="button" id="tail">浏览末尾</button><button type="button" id="cancel" disabled>取消扫描</button></form>
+<div class="statusbar"><span id="status" class="muted" role="status" aria-live="polite">等待读取</span><span class="grow"></span><progress id="progress" max="100" value="0" aria-label="扫描进度"></progress></div>
+<div class="workspace">
+<section class="results"><div class="sectionhead"><h2 id="resultTitle">最新日志</h2><span id="count">最多 100 条</span></div><div id="hits"><div class="empty">读取日志后，点击任意一条查看上下文</div></div></section>
+<section><div class="sectionhead"><h2>前后文</h2><span class="grow"></span><button id="prevHit" disabled>上一条</button><button id="nextHit" disabled>下一条</button></div><div id="context"><div class="empty">选择左侧日志<br>以字节偏移定位，不猜测行号或请求归属</div></div></section>
+</div>
+<div class="foot"><button id="prevPage" disabled>上一页</button><span id="page">第 1 页</span><button id="nextPage" disabled>下一页</button><span class="grow"></span><span>每页最多 100 条 · 上下文前后各 10 行</span></div>
+</section>
+<p class="notes">搜索整个文件快照；每个物理行仅前 16 KiB 可搜索，超长部分跳过。原文未经脱敏，请勿共享。</p>
+<details class="notes"><summary>搜索边界与快照说明</summary>搜索整个导入副本，不只搜索 SQL 或末尾。按字面、区分大小写匹配，不跨物理行；每行仅前 16 KiB 可搜索，超长部分有界跳过，展示不超过 16 KiB 并标注截断。无末尾换行的内容按快照末行处理。末尾仅浏览最后 256 KiB 中最多 100 条完整起始行；上下文只读取偏移前后各 256 KiB，超长行可能让前后文不足。空文件和没有匹配是正常状态。<br>每次搜索扫描约 2 MiB，浏览器逐块推进；满 100 条暂停，点击下一页继续。仅保留当前页与最近 20 页游标，可返回这些页，取消后可继续扫描。导入是静态副本，不跟随原文件新增；需要新内容时请重新导入。上传期间请不要修改所选文件，副本仅代表实际收到的字节。<br>不推断请求归属。JSON 行在列表显示级别、uid、tenant 和接口摘要，前后文缩进展开，并把 resp/req 里的 JSON 单独展开；常见 Unix 时间和 YYYYMMDD 会标成可读时间。搜索仍按原文匹配。导入 ID 与游标只在当前页面内存保留，刷新后需重新导入。</details>
+</main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+let permitted=false,busy=false,mode='tail',query='',generation=0,controller=null,detailController=null,detailGeneration=0,selected=-1,history=[],pageNumber=1;
+let imported=null,uploading=false,uploadController=null,uploadCancelled=false,leaving=false;
+const fresh=start=>({start,cursor:start,lines:[],offset:0,size:0,done:false,version:''});
+let page=fresh('');
+const bytes=n=>n>=1048576?(n/1048576).toFixed(1)+' MiB':n.toLocaleString()+' B';
+const accessEnd=/^\[([^\[\]\r\n]+)\] ([0-9][^ \t\r\n]*) resp=([\s\S]*)$/;
+const accessStart=/^\[([^\[\]\r\n]+)\] req=([\s\S]*)$/;
+function parseJSON(text){const t=String(text??'').trim();if(!t||(t[0]!=='{'&&t[0]!=='['))return null;try{return JSON.parse(t);}catch{return null;}}
+function clockValue(key,value){
+ const name=String(key||'');
+ if(/date$/i.test(name)&&/^(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])$/.test(String(value))){const s=String(value);return s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8);}
+ if(!/(?:At|Time|Timestamp)$/i.test(name)&&!/^(?:ts|timestamp)$/i.test(name))return '';
+ const n=typeof value==='number'?value:typeof value==='string'&&/^\d{10,13}$/.test(value)?Number(value):NaN;
+ if(!Number.isFinite(n))return '';
+ const ms=n>=1e12?n:n>=1e9?n*1000:0;if(!ms)return '';
+ const d=new Date(ms);return Number.isNaN(d.getTime())?'':d.toLocaleString('zh-CN',{hour12:false,timeZone:'Asia/Shanghai'});
+}
+function annotate(value,key){
+ if(Array.isArray(value))return value.map(v=>annotate(v));
+ if(value&&typeof value==='object'){const out={};for(const [k,v] of Object.entries(value))out[k]=annotate(v,k);return out;}
+ const note=clockValue(key,value);return note?String(value)+'  '+note:value;
+}
+function payloadText(body){
+ if(parseJSON(body))return {body,err:''};
+ for(const marker of [' [err=',' err=']){
+  const i=body.lastIndexOf(marker);
+  if(i>0&&parseJSON(body.slice(0,i))){let err=body.slice(i+marker.length);if(marker===' [err=')err=err.replace(/\]$/,'');return {body:body.slice(0,i),err};}
+ }
+ return {body,err:''};
+}
+function accessParts(message){
+ const end=accessEnd.exec(message);
+ if(end){const p=payloadText(end[3]);return {headline:'['+end[1]+'] '+end[2]+(p.err?' · err '+p.err:''),label:'resp',body:p.body};}
+ const start=accessStart.exec(message);if(start)return {headline:'['+start[1]+'] req',label:'req',body:start[2]};
+ return null;
+}
+function logSummary(text){
+ const object=parseJSON(text);
+ const message=object&&typeof object==='object'&&!Array.isArray(object)?String(object.msg??object.message??''):String(text??'');
+ const access=accessParts(message);const bits=[];
+ if(object&&typeof object==='object'&&!Array.isArray(object)){
+  if(object.level)bits.push(String(object.level));
+  const uid=object.uid??object.user_id,tenant=object.tenant_id??object.tenantId;
+  if(uid!==undefined&&uid!=='')bits.push('uid '+uid);
+  if(tenant!==undefined&&tenant!=='')bits.push('tenant '+tenant);
+ }
+ if(access)bits.push(access.headline);else if(message)bits.push(message.length>180?message.slice(0,180)+'…':message);
+ return bits.join(' · ')||text||'（空行）';
+}
+function formatLog(text){
+ const object=parseJSON(text);
+ if(object&&typeof object==='object'&&!Array.isArray(object)){
+  const message=String(object.msg??object.message??'');
+  const access=accessParts(message);const copy={...object};
+  let extra='';
+  if(access){delete copy.msg;delete copy.message;copy.message=access.headline;const payload=parseJSON(access.body);extra='\n\n'+access.label+(payload?' · JSON\n'+JSON.stringify(annotate(payload),null,2):'\n'+(access.body||''));}
+  return JSON.stringify(annotate(copy),null,2)+extra;
+ }
+ const access=accessParts(text);
+ if(access){const payload=parseJSON(access.body);return access.headline+'\n\n'+access.label+'\n'+(payload?JSON.stringify(annotate(payload),null,2):access.body||'');}
+ if(Array.isArray(object))return JSON.stringify(annotate(object),null,2);
+ return text||'（空行）';
+}
+function error(message){$('error').textContent=message;$('error').hidden=!message;}
+function clearDetail(){detailGeneration++;detailController?.abort();selected=-1;$('context').replaceChildren();const el=document.createElement('div');el.className='empty';el.textContent='选择左侧日志，查看前后文';$('context').append(el);}
+function stop(){generation++;controller?.abort();controller=null;busy=false;buttons();}
+function buttons(){
+ $('cancel').disabled=!busy;$('searchButton').disabled=busy;$('prevPage').disabled=busy||mode!=='search'||!history.length;
+ $('nextPage').disabled=busy||mode!=='search'||page.done;$('nextPage').textContent=page.lines.length<100?'继续扫描':'下一页';
+ $('prevHit').disabled=selected<=0;$('nextHit').disabled=selected<0||selected>=page.lines.length-1;
+}
+function render(){
+ const root=$('hits');root.replaceChildren();
+ if(!page.lines.length){const e=document.createElement('div');e.className='empty';e.textContent=busy?'正在分块扫描，可随时取消…':mode==='tail'?'末尾窗口暂无可展示日志（文件为空或包含超长行）':page.done?'扫描完成，没有匹配的日志':'当前扫描范围没有匹配，可继续扫描';root.append(e);}
+ page.lines.forEach((line,i)=>{const b=document.createElement('button');b.type='button';b.className='hit'+(i===selected?' selected':'');const offset=document.createElement('div');offset.className='offset';offset.textContent='BYTE '+line.offset+(line.truncated?' · 已截断':'');const text=document.createElement('code');text.textContent=logSummary(line.text);b.append(offset,text);b.onclick=()=>choose(i);root.append(b);});
+ $('count').textContent=page.lines.length+' 条 / 最多 100 条';$('page').textContent='第 '+pageNumber+' 页';$('progress').value=page.size?100*page.offset/page.size:page.done?100:0;buttons();
+}
+async function api(kind,params,signal){
+ if(!permitted||!imported?.complete)throw Error('请先完成文件导入');
+ const r=await fetch('/api/logs/'+kind+'?'+new URLSearchParams({raw:'1',id:imported.id,...params}),{signal,cache:'no-store'});const data=await r.json();if(!r.ok)throw Error(data.error);return data;
+}
+async function scan(){
+ stop();clearDetail();error('');busy=true;const g=generation;controller=new AbortController();render();
+ try{
+  while(page.lines.length<100&&!page.done){
+   const data=await api('search',{q:query,cursor:page.cursor,limit:String(100-page.lines.length)},controller.signal);if(g!==generation)return;
+   if(!page.start)page.start=data.start_cursor;page.cursor=data.cursor;page.version=data.version;page.size=data.size;page.offset=data.offset;page.done=data.done;page.lines.push(...data.lines);render();
+   $('status').textContent='已扫描 '+bytes(page.offset)+' / '+bytes(page.size)+' · 当前页 '+page.lines.length+' 条';
+  }
+  $('status').textContent+=(page.done?' · 已到快照末尾':' · 本页已满，下一页继续');
+ }catch(e){if(g===generation&&e.name!=='AbortError')error(e.message);}finally{if(g===generation){busy=false;render();}}
+}
+async function tail(){
+ if(!permitted)return;
+ stop();clearDetail();error('');mode='tail';history=[];pageNumber=1;page=fresh('');busy=true;const g=generation;controller=new AbortController();$('resultTitle').textContent='快照末尾';$('status').textContent='读取导入副本末尾…';render();
+ try{const data=await api('tail',{limit:'100'},controller.signal);if(g!==generation)return;page={...page,...data};$('status').textContent='文件 '+bytes(data.size)+' · 末尾最多 256 KiB · 静态快照，不跟随原文件';}
+ catch(e){if(g===generation&&e.name!=='AbortError')error(e.message);}
+ finally{if(g===generation){busy=false;render();}}
+}
+async function choose(i){
+ if(!page.lines[i])return;detailController?.abort();detailController=new AbortController();const g=++detailGeneration;selected=i;render();const line=page.lines[i];$('context').textContent='读取 BYTE '+line.offset+' 前后文…';
+ try{const data=await api('context',{version:page.version,offset:String(line.offset),before:'10',after:'10'},detailController.signal);if(g!==detailGeneration)return;const root=$('context');root.replaceChildren();for(const item of data.lines){const row=document.createElement('div');row.className='contextline'+(item.offset===line.offset?' selected':'');const off=document.createElement('div');off.className='offset';off.textContent='BYTE '+item.offset+(item.offset===line.offset?' · 当前选中':'');const text=document.createElement('pre');text.textContent=formatLog(item.text);row.append(off,text);root.append(row);}if(data.limited){const note=document.createElement('div');note.className='muted contextline';note.textContent='有界读取；窗口外日志未加载。';root.append(note);}root.querySelector('.selected')?.scrollIntoView({block:'nearest'});}
+ catch(e){if(g===detailGeneration&&e.name!=='AbortError')$('context').textContent=e.message;}
+}
+function uploadView(){
+ $('enter').disabled=uploading;$('replace').disabled=uploading;$('revoke').disabled=uploading;
+ $('upload').hidden=!uploading;$('privacy').hidden=uploading||!!imported?.complete;
+ $('explorer').hidden=!permitted;$('replace').hidden=!imported;$('revoke').hidden=!imported;
+ $('source').textContent=imported?imported.name+' · '+bytes(imported.size)+(imported.complete?' · 导入快照':' · 尚未完成'):'尚未导入 · 与 SQL 监控来源完全独立';
+}
+function hideRaw(){stop();clearDetail();permitted=false;page=fresh('');history=[];query='';$('keyword').value='';render();$('explorer').hidden=true;}
+async function uploadAPI(path,body,{id='',offset,signal,method='POST',keepalive=false}={}){
+ const headers={'Content-Type':offset===undefined?'application/json':'application/octet-stream'};
+ if(id)headers['X-Log-Import']=id;if(offset!==undefined)headers['X-Log-Offset']=String(offset);
+ const r=await fetch('/api/logs/imports'+path,{method,headers,body,signal,keepalive,cache:'no-store'});
+ const data=await r.json();if(!r.ok){const e=Error(data.error);e.status=r.status;throw e;}return data;
+}
+async function removeImport(){
+ hideRaw();if(!imported)return;
+ try{await uploadAPI('','{}',{id:imported.id,method:'DELETE',keepalive:true});}catch(e){if(e.status!==410)throw e;}
+ imported=null;
+}
+async function uploadFile(file){
+ if(uploading||!file)return;
+ if(file.size>2147483648){error('单文件最多 2 GiB，请选择更小的日志文件。');return;}
+ uploading=true;uploadCancelled=false;error('');hideRaw();uploadView();$('uploadProgress').value=0;$('uploadStatus').textContent='准备上传 '+file.name+' · '+bytes(file.size);$('cancelUpload').disabled=false;
+ try{
+  await removeImport();
+  if(uploadCancelled||leaving)throw Error('上传已取消');
+  // Do not abort creation: retain its returned ID so cancellation can delete it.
+  imported=await uploadAPI('',JSON.stringify({name:file.name,size:file.size}));uploadView();
+  for(let offset=0;offset<file.size;){
+   if(uploadCancelled||leaving)throw Error('上传已取消');
+   uploadController=new AbortController();
+   const end=Math.min(file.size,offset+1048576);
+   await uploadAPI('/chunk',file.slice(offset,end),{id:imported.id,offset,signal:uploadController.signal});
+   offset=end;$('uploadProgress').value=100*offset/file.size;$('uploadStatus').textContent='已上传 '+bytes(offset)+' / '+bytes(file.size);
+  }
+  if(uploadCancelled||leaving)throw Error('上传已取消');
+  uploadController=new AbortController();
+  imported=await uploadAPI('/finalize','{}',{id:imported.id,signal:uploadController.signal});
+  if(uploadCancelled||leaving)throw Error('上传已取消');
+  $('uploadProgress').value=100;permitted=true;
+ }catch(e){
+  let message=uploadCancelled?'上传已取消。':e.message;
+  try{await removeImport();message+=' 临时副本已移除。';}catch(cleanup){message+=' 副本移除失败，请点击移除重试；30 分钟无访问后过期。';}
+  error(message);
+ }finally{
+  uploading=false;uploadController=null;uploadView();
+ }
+ if(permitted&&!leaving)tail();
+}
+$('enter').onclick=$('replace').onclick=()=>{if(!uploading){$('file').value='';$('file').click();}};
+$('file').onchange=()=>{if($('file').files.length===1)uploadFile($('file').files[0]);};
+$('drop').ondragover=e=>{e.preventDefault();e.dataTransfer.dropEffect=uploading?'none':'copy';};
+$('drop').ondrop=e=>{e.preventDefault();if(uploading)return;if(e.dataTransfer.files.length!==1){error('请一次只拖入一个日志文件。');return;}uploadFile(e.dataTransfer.files[0]);};
+// Prevent accidental navigation when a file is dropped outside the target.
+window.addEventListener('dragover',e=>e.preventDefault());window.addEventListener('drop',e=>e.preventDefault());
+$('cancelUpload').onclick=()=>{uploadCancelled=true;uploadController?.abort();$('cancelUpload').disabled=true;$('uploadStatus').textContent='正在取消并清理临时副本…';};
+$('revoke').onclick=async()=>{if(uploading)return;uploading=true;error('');hideRaw();uploadView();$('uploadStatus').textContent='正在移除副本…';$('cancelUpload').disabled=true;try{await removeImport();}catch(e){error('移除失败，请重试：'+e.message);}finally{uploading=false;uploadView();}};
+$('searchForm').onsubmit=e=>{e.preventDefault();if(!permitted)return;mode='search';query=$('keyword').value;history=[];pageNumber=1;page=fresh('');$('resultTitle').textContent=query?'关键词匹配':'全部日志 · 从文件开头';$('status').textContent='开始扫描整个文件快照…';scan();};
+$('tail').onclick=()=>tail();
+$('cancel').onclick=()=>{stop();$('status').textContent='已取消 · 保留已读取结果，可继续扫描';render();};
+$('nextPage').onclick=()=>{if(page.lines.length>=100){history.push(page.start);if(history.length>20)history.shift();pageNumber++;page=fresh(page.cursor);}scan();};
+$('prevPage').onclick=()=>{if(history.length){pageNumber--;page=fresh(history.pop());scan();}};
+$('prevHit').onclick=()=>choose(selected-1);$('nextHit').onclick=()=>choose(selected+1);
+window.addEventListener('pagehide',()=>{leaving=true;uploadCancelled=true;uploadController?.abort();hideRaw();if(imported)uploadAPI('','{}',{id:imported.id,method:'DELETE',keepalive:true}).catch(()=>{});});
+window.addEventListener('pageshow',e=>{if(e.persisted){leaving=false;imported=null;hideRaw();uploadView();error('页面已恢复，请重新导入日志。');}});
+</script>
+</body>
+</html>

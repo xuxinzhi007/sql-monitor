@@ -1,0 +1,17 @@
+{
+  "source": {"mode": "file", "path": "/tmp/data-service-local.log"},
+  "port": 8767,
+  "max_events": 2000,
+  "initial_bytes": 0,
+  "feishu": {
+    "enabled": false,
+    "project": "data-service local",
+    "app_id": "",
+    "app_secret": "",
+    "recipients": [
+      {"name": "自己", "email": "xuxinzhi@x2robot.com"}
+    ],
+    "interval_seconds": 300,
+    "slow_ms": 200
+  }
+}

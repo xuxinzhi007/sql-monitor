@@ -1,0 +1,5 @@
+/sql-monitor
+__pycache__/
+*.pyc
+/sql-monitor.local.json
+/sql-monitor.json
