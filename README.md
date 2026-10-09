@@ -20,7 +20,7 @@
 需要 Go 1.24+。工具本身无外部依赖；独立演示项目使用 GORM + SQLite **内存数据库**，需要 CGO 和本机 C 编译器。以下命令在 `sql-monitor` 目录执行：
 
 ```bash
-go build -o sql-monitor .
+go build -o sql-monitor ./cmd/sql-monitor
 (cd examples/gorm-demo && CGO_ENABLED=1 go run .) | ./sql-monitor --stdin
 ```
 
@@ -45,7 +45,7 @@ go build -o sql-monitor .
 
 ## 飞书 SQL 汇总通知
 
-不改变 SQL 采集、页面筛选和 2,000 条滚动保留。通知为可选后台功能，普通 `go run . --log ...` 不发送消息。
+不改变 SQL 采集、页面筛选和 2,000 条滚动保留。通知为可选后台功能，普通 `go run ./cmd/sql-monitor --log ...` 不发送消息。
 
 在本目录创建私有配置后运行：
 
@@ -54,8 +54,17 @@ cp -n feishu.example.json sql-monitor.local.json
 chmod 600 sql-monitor.local.json
 # 编辑 feishu.app_id、app_secret、recipients，并将 enabled 改为 true
 # 如果已有 sql-monitor.local.json，直接编辑，勿覆盖
-go run . --config sql-monitor.local.json
+go run ./cmd/sql-monitor --config sql-monitor.local.json
 ```
+
+可用 `feishu test` 子命令验证配置与发送链路（替代独立的 `feishu-message/send.py`）：
+
+```bash
+go run ./cmd/sql-monitor feishu test --config sql-monitor.local.json --check   # 仅离线校验，不联网不发送
+go run ./cmd/sql-monitor feishu test --config sql-monitor.local.json          # 向每个收件人发送一条测试消息
+```
+
+启动时 stderr 会明确显示飞书通知的开关状态：未提供含 `feishu.enabled=true` 的 `--config` 时打印关闭原因，避免“静默不发送”被误认为故障。常见错误码：`10014` App Secret 无效、`230013` 机器人对该用户不可用、`99991672` 缺少消息发送权限。
 
 - `feishu.recipients`：1–20 个 `{ "name": "备注名", "email": "企业邮箱" }`，每人独立收到同一张卡片；不使用姓名查询账号。账号必须在应用可用范围内，应用需要机器人消息发送权限，不需要通讯录查询权限。
 - `interval_seconds`：10–86400 秒，示例为 300 秒；`slow_ms`：正数毫秒阈值，示例为 200。此阈值仅用于通知，不改变页面原有慢查询筛选。
@@ -147,8 +156,8 @@ go test -run '^$' -bench BenchmarkLogs500k -benchmem -benchtime=1x -v
 - 配置内相对 `source.path`：相对配置文件所在目录。
 - CLI `--log` 与 `--config` 的相对路径：相对启动时工作目录。
 - 不展开 `~` 或环境变量；需要时用 shell 展开或绝对路径。
-- `source.mode` 只接受 `file` / `stdin`。stdin 配置为 `{"source":{"mode":"stdin"}}`，不可带非空 path。
-- `--log` 覆盖配置中的 stdin 模式；`--stdin` 覆盖配置中的文件模式。显式同时提供 `--stdin` 与 `--log` 会报错（包括 `--stdin=false`）。
+- `source.mode` 接受 `file` / `stdin` / `k8s`。stdin 配置为 `{"source":{"mode":"stdin"}}`，不可带非空 path；k8s 配置见「Kubernetes 日志源」一节。
+- `--log` 覆盖配置中的 stdin 模式；`--stdin` 覆盖配置中的文件模式。显式同时提供 `--stdin` 与 `--log` 会报错（包括 `--stdin=false`）。`--k8s-*` 标志与显式 `--stdin` / `--log` 同时出现也会报错。
 - JSON 限制 64 KiB，拒绝未知字段和非法类型。可省略字段以使用默认值。
 
 | 参数 | 默认值 | 说明 |
@@ -159,6 +168,59 @@ go test -run '^$' -bench BenchmarkLogs500k -benchmem -benchtime=1x -v
 | `--port` | 8767 | 仅监听 `127.0.0.1` |
 | `--max-events` | 2000 | 保留条数，1..2000 |
 | `--initial-bytes` | 2097152 | 初次文件读取末尾最多 2 MiB；0 表示仅新增；stdin 不使用此限制 |
+| `--k8s-env` | 配置里的 `default` | 选择 `k8s.environments[]` 中的环境名 |
+| `--k8s-lane` | 环境里的 `lane` | 覆盖 lane 标签值（`x2robot.io/lane`） |
+| `--k8s-kubeconfig` | 环境里的 `kubeconfig` | 覆盖 kubeconfig；也可脱离配置文件独立使用 |
+| `--k8s-context` | 环境里的 `context` | 覆盖 kubeconfig context |
+| `--k8s-namespace` | 环境里的 `namespace` | 覆盖命名空间；留空则用 context 默认 |
+| `--k8s-app` | 环境里的 `app` | 覆盖 app 标签值 |
+| `--k8s-container` | 环境里的 `container` | 多容器 pod 时指定容器 |
+| `--k8s-tail` | 200 | 首次回溯行数；0 表示不回放 |
+| `--k8s-kubectl` | PATH 里的 `kubectl` | kubectl 可执行文件路径 |
+
+## Kubernetes 日志源（source.mode = "k8s"）
+
+用 `kubectl logs -f` 拉集群里某个 lane 的 data-service pod 日志，喂进现有解析/UI 通路。实现走 `kubectl` 子进程，不引入 client-go，保持工具零外部依赖；本期不做 UI 内切换环境。
+
+```json
+{
+  "source": {
+    "mode": "k8s",
+    "k8s": {
+      "default": "dev2",
+      "environments": [
+        {
+          "name": "dev2",
+          "kubeconfig": "~/Downloads/ns-cloud-dev.readonly.yml",
+          "context": "dev-user-context",
+          "namespace": "ns-cloud-dev",
+          "app": "data-service",
+          "lane": "dev2"
+        }
+      ]
+    }
+  }
+}
+```
+
+- `k8s.environments[]` 是列表（不是 map），保留顺序，`name` 唯一标识环境。
+- `k8s.default` 是 `--k8s-env` 缺省时选中的环境；`environments[].kubeconfig` 相对路径相对配置文件目录解析（与 `source.path` 一致），不展开 `~` 或环境变量。
+- `app` 必填，避免 `kubectl logs -l` 无选择器时全量拉日志；`lane` 是环境标签值。
+- `lane_label` 可选，覆盖 lane 标签键（默认 `x2robot.io/lane`）；多集群标签键不一致时可写如 `team.io/rail`，最终选择器为 `app=…,<lane_label>=<lane>`。
+- `tail` 是首次回溯行数（默认 200），指针字段可显式写 0 表示不回放。
+
+启动：
+
+```bash
+./sql-monitor --config sql-monitor.local.json --k8s-env dev2
+# 换环境无需改配置：./sql-monitor --config sql-monitor.local.json --k8s-lane dev3
+```
+
+`/api/status` 的 `source_mode` 为 `k8s`，`path` 显示 `ns-cloud-dev lane=dev2 app=data-service`。
+
+**lane 语义与权限边界**：目标集群在同一个命名空间内用 pod 标签区分环境，标签 `x2robot.io/lane`（与 `env` 一致）取值 `dev` / `dev1` / `dev2` / `dev3` / `test`。当前只读 kubeconfig 的 ServiceAccount 仅授予 `ns-cloud-dev` 命名空间的 pods / pods/log 等资源读取权限；`ns-cloud-test` / `ns-cloud-prod` 等其它命名空间一律 Forbidden，无法绕过。要读 test 命名空间需管理员签发另一份 kubeconfig，届时在 `k8s.environments[]` 加一条即可。
+
+**滚动发布**：发版会换 pod，`kubectl logs -f` 随之退出，工具自动退避 1 秒后用 `--tail=0` 重连（不回放，避免重复统计），重新解析 `-l` 选择器接上新 pod。
 
 工具自动识别以下三种格式，没有任意日志自动理解功能。可以在同一输入中遇到不同格式，但 GORM 两行必须相邻。
 
@@ -219,6 +281,21 @@ HTTP 保留只读 SQL 路由、Host / Origin 校验、无 CORS、无缓存与原
 
 端口占用时先打开已有页面，或改 `--port 8768`，不要结束不明进程。连接中断时检查 `sql-monitor` 进程是否仍运行。
 
+## 项目结构
+
+代码按依赖方向分层，库代码全部在 `internal/`，进程入口在 `cmd/sql-monitor`：
+
+- `cmd/sql-monitor`：唯一 `main`，注册 SIGINT/SIGTERM 后委托给 `app.Run`。
+- `internal/app`：运行时装配——解析 CLI 与 JSON 配置、启动 HTTP 服务与数据源/通知协程；定义通知接口 `Notifier`。
+- `internal/config`：JSON 配置加载、校验与 `init` 生成（0600 权限），零内部依赖。
+- `internal/monitor`：核心采集与聚合，暴露数据源 `Source` 与 `Sink` 接口，零内部依赖。
+- `internal/source/k8s`：`kubectl logs -f` 数据源，实现 `monitor.Source`。
+- `internal/feishu`：飞书通知渠道，实现 `app.Notifier`。
+- `internal/web`：HTTP 处理器、`go:embed` 页面与导入存储。
+- `examples/`：`gorm-demo`（独立 module 的演示）与 `python`（归档对照）。
+
+依赖单向：`config`、`monitor` 为最底层；`web` 与 `source/k8s` 依赖 `monitor`，`feishu` 依赖 `config` 与 `monitor`，`app` 装配全部。数据源与通知渠道都是接口，新增渠道（其它 IM、云日志源等）只需实现接口并在 `app` 装配，无需改动核心。无第三方依赖、无数据库，可直接开源。
+
 ## 开发与验证
 
 在工具根目录执行：
@@ -237,4 +314,4 @@ go vet ./...
 
 演示测试构建真实监控二进制，把实际 GORM 日志分别经 stdin 和文件输入，验证 SQL 数量、慢查询/错误、重复指纹、能力计数、默认脱敏、显式原文和 EOF 后 HTTP 可用性；临时服务随测试退出。GORM v1.31.1、SQLite driver v1.6.0，间接 x/text 使用缓存可用的 v0.21.0。
 
-`monitor.py` / `test_monitor.py` 保留为归档对照，未修改，不是 Go 运行依赖。
+`examples/python/monitor.py` / `test_monitor.py` 保留为归档对照，未修改，不是 Go 运行依赖。

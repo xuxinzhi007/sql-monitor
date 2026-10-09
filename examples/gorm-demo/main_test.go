@@ -56,7 +56,7 @@ func TestRealSQLThroughMonitor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	build := exec.Command("go", "build", "-race", "-o", binary, ".")
+	build := exec.Command("go", "build", "-race", "-o", binary, "./cmd/sql-monitor")
 	build.Dir = root
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build monitor: %v\n%s", err, output)
